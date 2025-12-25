@@ -1,0 +1,223 @@
+syntax = "proto3";
+
+package orbitrap.simulator.v1;
+
+option csharp_namespace = "Orbitrap.Simulator.Grpc";
+
+// LC-MS Simulator Service
+// Provides streaming scan data from a simulated Orbitrap mass spectrometer
+service SimulatorService {
+  // Stream scans from the simulator
+  rpc StreamScans(StreamScansRequest) returns (stream ScanMessage);
+
+  // Get current simulator status
+  rpc GetStatus(GetStatusRequest) returns (StatusResponse);
+
+  // Control acquisition
+  rpc StartAcquisition(StartAcquisitionRequest) returns (StartAcquisitionResponse);
+  rpc StopAcquisition(StopAcquisitionRequest) returns (StopAcquisitionResponse);
+  rpc PauseAcquisition(PauseAcquisitionRequest) returns (PauseAcquisitionResponse);
+  rpc ResumeAcquisition(ResumeAcquisitionRequest) returns (ResumeAcquisitionResponse);
+
+  // Get instrument information
+  rpc GetInstrumentInfo(GetInstrumentInfoRequest) returns (InstrumentInfoResponse);
+}
+
+// Request to stream scans
+message StreamScansRequest {
+  // Optional filter for scan streaming
+  ScanFilter filter = 1;
+
+  // Buffer size hint for client
+  int32 buffer_size = 2;
+}
+
+// Filter criteria for scans
+message ScanFilter {
+  // Filter by MS order (0 = all, 1 = MS1 only, 2 = MS2 only)
+  int32 ms_order = 1;
+
+  // Minimum retention time in minutes
+  optional double min_retention_time = 2;
+
+  // Maximum retention time in minutes
+  optional double max_retention_time = 3;
+
+  // Polarity filter
+  Polarity polarity = 4;
+}
+
+// A single mass spectrum scan
+message ScanMessage {
+  // Scan identification
+  int32 scan_number = 1;
+  int32 ms_order = 2;
+  double retention_time = 3;
+
+  // Spectrum data (parallel arrays)
+  repeated double mz_values = 4 [packed = true];
+  repeated double intensity_values = 5 [packed = true];
+
+  // Aggregates
+  double base_peak_mz = 6;
+  double base_peak_intensity = 7;
+  double total_ion_current = 8;
+
+  // Precursor info (MS2+ only)
+  optional double precursor_mass = 9;
+  optional int32 precursor_charge = 10;
+  optional double precursor_intensity = 11;
+  optional double isolation_width = 12;
+  optional double collision_energy = 13;
+  FragmentationType fragmentation_type = 14;
+
+  // Analyzer metadata
+  string analyzer = 15;
+  double resolution_at_mz200 = 16;
+  double mass_accuracy_ppm = 17;
+  Polarity polarity = 18;
+
+  // Timestamp when scan was generated (Unix milliseconds)
+  int64 timestamp_ms = 19;
+
+  // Extended metadata as key-value pairs
+  map<string, string> trailer_extra = 20;
+}
+
+// Ion polarity
+enum Polarity {
+  POLARITY_UNKNOWN = 0;
+  POLARITY_POSITIVE = 1;
+  POLARITY_NEGATIVE = 2;
+}
+
+// Fragmentation type
+enum FragmentationType {
+  FRAGMENTATION_UNKNOWN = 0;
+  FRAGMENTATION_CID = 1;
+  FRAGMENTATION_HCD = 2;
+  FRAGMENTATION_ETD = 3;
+  FRAGMENTATION_ETHCD = 4;
+  FRAGMENTATION_UVPD = 5;
+}
+
+// Acquisition state
+enum AcquisitionState {
+  ACQUISITION_STATE_IDLE = 0;
+  ACQUISITION_STATE_STARTING = 1;
+  ACQUISITION_STATE_ACQUIRING = 2;
+  ACQUISITION_STATE_PAUSED = 3;
+  ACQUISITION_STATE_STOPPING = 4;
+  ACQUISITION_STATE_COMPLETED = 5;
+  ACQUISITION_STATE_FAULTED = 6;
+}
+
+// Status request
+message GetStatusRequest {}
+
+// Status response
+message StatusResponse {
+  AcquisitionState state = 1;
+  int64 scan_count = 2;
+  double current_retention_time = 3;
+  string session_id = 4;
+  string error_message = 5;
+}
+
+// Start acquisition request
+message StartAcquisitionRequest {
+  // Optional maximum number of scans
+  optional int32 max_scans = 1;
+
+  // Optional maximum duration in seconds
+  optional double max_duration_seconds = 2;
+
+  // Scan filter
+  ScanFilter filter = 3;
+
+  // Simulation parameters
+  SimulationParameters simulation = 4;
+}
+
+// Simulation-specific parameters
+message SimulationParameters {
+  // Scan rate in scans per second
+  double scan_rate = 1;
+
+  // Number of MS2 scans per MS1 scan (DDA simulation)
+  int32 ms2_per_ms1 = 2;
+
+  // m/z range
+  double min_mz = 3;
+  double max_mz = 4;
+
+  // Resolution setting
+  double resolution = 5;
+
+  // Noise level
+  double noise_level = 6;
+
+  // Random seed for reproducibility (0 = random)
+  int64 random_seed = 7;
+}
+
+// Start acquisition response
+message StartAcquisitionResponse {
+  bool success = 1;
+  string session_id = 2;
+  string error_message = 3;
+}
+
+// Stop acquisition request
+message StopAcquisitionRequest {
+  string session_id = 1;
+}
+
+// Stop acquisition response
+message StopAcquisitionResponse {
+  bool success = 1;
+  int64 final_scan_count = 2;
+  string error_message = 3;
+}
+
+// Pause acquisition request
+message PauseAcquisitionRequest {
+  string session_id = 1;
+}
+
+// Pause acquisition response
+message PauseAcquisitionResponse {
+  bool success = 1;
+  string error_message = 2;
+}
+
+// Resume acquisition request
+message ResumeAcquisitionRequest {
+  string session_id = 1;
+}
+
+// Resume acquisition response
+message ResumeAcquisitionResponse {
+  bool success = 1;
+  string error_message = 2;
+}
+
+// Get instrument info request
+message GetInstrumentInfoRequest {}
+
+// Instrument info response
+message InstrumentInfoResponse {
+  string instrument_name = 1;
+  string instrument_id = 2;
+  string model = 3;
+  string serial_number = 4;
+  string firmware_version = 5;
+  string simulator_version = 6;
+
+  // Capabilities
+  repeated string supported_analyzers = 7;
+  repeated FragmentationType supported_fragmentation_types = 8;
+  double max_resolution = 9;
+  double min_mz = 10;
+  double max_mz = 11;
+}

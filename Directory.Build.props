@@ -1,0 +1,53 @@
+<Project>
+  <!--
+    Shared MSBuild properties for all .NET projects in the solution.
+    https://docs.microsoft.com/en-us/visualstudio/msbuild/customize-your-build
+  -->
+
+  <PropertyGroup>
+    <!-- Compiler settings -->
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <WarningsAsErrors>CS8600;CS8601;CS8602;CS8603;CS8604</WarningsAsErrors>
+
+    <!-- Build settings -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn> <!-- Missing XML comment for publicly visible type -->
+
+    <!-- Package metadata -->
+    <Authors>Your Name</Authors>
+    <Company>Your Company</Company>
+    <Product>Orbitrap IAPI Simulator</Product>
+    <Copyright>Copyright (c) 2024</Copyright>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/yourusername/orbitrap-iapi-sim</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/yourusername/orbitrap-iapi-sim.git</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageTags>orbitrap;mass-spectrometry;proteomics;iapi;simulator</PackageTags>
+
+    <!-- Deterministic builds for reproducibility -->
+    <Deterministic>true</Deterministic>
+    <ContinuousIntegrationBuild Condition="'$(CI)' == 'true'">true</ContinuousIntegrationBuild>
+
+    <!-- Source Link for debugging NuGet packages -->
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+  </PropertyGroup>
+
+  <!-- Enable nullable reference types analysis -->
+  <PropertyGroup>
+    <EnableNETAnalyzers>true</EnableNETAnalyzers>
+    <AnalysisLevel>latest</AnalysisLevel>
+    <AnalysisMode>Recommended</AnalysisMode>
+  </PropertyGroup>
+
+  <!-- Source Link packages for CI builds -->
+  <ItemGroup Condition="'$(CI)' == 'true'">
+    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="8.0.0" PrivateAssets="All" />
+  </ItemGroup>
+
+</Project>

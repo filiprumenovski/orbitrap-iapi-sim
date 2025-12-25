@@ -1,0 +1,54 @@
+[package]
+name = "lc-ms-simulator"
+version = "0.1.0"
+edition = "2021"
+authors = ["Your Name <your.email@example.com>"]
+description = "LC-MS Orbitrap simulator with gRPC server"
+license = "MIT"
+repository = "https://github.com/yourusername/orbitrap-iapi-sim"
+keywords = ["mass-spectrometry", "orbitrap", "simulator", "grpc", "proteomics"]
+categories = ["science", "simulation"]
+
+[dependencies]
+# gRPC and Protocol Buffers
+tonic = "0.12"
+prost = "0.13"
+prost-types = "0.13"
+
+# Async runtime
+tokio = { version = "1.41", features = ["full"] }
+tokio-stream = "0.1"
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Random number generation for simulation
+rand = "0.8"
+rand_distr = "0.4"
+
+# Logging and tracing
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# CLI argument parsing
+clap = { version = "4.5", features = ["derive"] }
+
+# Error handling
+thiserror = "2.0"
+anyhow = "1.0"
+
+# Configuration
+config = "0.14"
+
+[build-dependencies]
+tonic-build = "0.12"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+
+[[bin]]
+name = "lc-ms-simulator"
+path = "src/main.rs"

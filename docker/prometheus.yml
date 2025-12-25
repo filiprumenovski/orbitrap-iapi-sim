@@ -1,0 +1,25 @@
+# Prometheus configuration for Orbitrap Simulator
+# Used with docker-compose observability profile
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # Orbitrap Simulator metrics (if exposed)
+  # Note: Add metrics endpoint to your services to enable this
+  # - job_name: 'orbitrap-simulator'
+  #   static_configs:
+  #     - targets: ['simulator:9100']
+  #   metrics_path: /metrics
+
+  # .NET application metrics (if using OpenTelemetry Prometheus exporter)
+  # - job_name: 'orbitrap-console'
+  #   static_configs:
+  #     - targets: ['console:9464']
+  #   metrics_path: /metrics

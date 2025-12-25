@@ -1,0 +1,29 @@
+# CODEOWNERS - Define who reviews what
+# https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Default owners for everything
+* @your-username
+
+# .NET code
+/src/dotnet/ @your-username
+/tests/ @your-username
+*.csproj @your-username
+*.sln @your-username
+
+# Rust code
+/src/rust/ @your-username
+Cargo.toml @your-username
+Cargo.lock @your-username
+
+# CI/CD and infrastructure
+/.github/ @your-username
+/docker/ @your-username
+Makefile @your-username
+justfile @your-username
+
+# Documentation
+*.md @your-username
+/docs/ @your-username
+
+# Protobuf contracts (critical - affects both C# and Rust)
+/protos/ @your-username

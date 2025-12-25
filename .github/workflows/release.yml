@@ -1,0 +1,306 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g., 1.0.0)'
+        required: true
+        type: string
+
+env:
+  DOTNET_VERSION: '8.0.x'
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+jobs:
+  # ==========================================================================
+  # Validate
+  # ==========================================================================
+  validate:
+    name: Validate Release
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Determine version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            VERSION="${GITHUB_REF#refs/tags/v}"
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Release version: $VERSION"
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Restore and Build
+        run: |
+          dotnet restore Orbitrap.sln
+          dotnet build Orbitrap.sln --configuration Release
+
+      - name: Run Tests
+        run: dotnet test Orbitrap.sln --configuration Release --no-build
+
+  # ==========================================================================
+  # Build NuGet Packages
+  # ==========================================================================
+  nuget:
+    name: NuGet Packages
+    runs-on: ubuntu-latest
+    needs: validate
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Restore
+        run: dotnet restore Orbitrap.sln
+
+      - name: Pack
+        run: |
+          dotnet pack Orbitrap.sln \
+            --configuration Release \
+            --output ./artifacts/nuget \
+            -p:PackageVersion=${{ needs.validate.outputs.version }}
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: nuget-packages
+          path: ./artifacts/nuget/*.nupkg
+
+  # ==========================================================================
+  # Build .NET Binaries
+  # ==========================================================================
+  dotnet-binaries:
+    name: .NET ${{ matrix.rid }}
+    runs-on: ${{ matrix.os }}
+    needs: validate
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            rid: linux-x64
+          - os: ubuntu-latest
+            rid: linux-arm64
+          - os: windows-latest
+            rid: win-x64
+          - os: macos-latest
+            rid: osx-x64
+          - os: macos-latest
+            rid: osx-arm64
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Publish
+        run: |
+          dotnet publish samples/Orbitrap.Console \
+            --configuration Release \
+            --runtime ${{ matrix.rid }} \
+            --self-contained true \
+            -p:PublishSingleFile=true \
+            -p:Version=${{ needs.validate.outputs.version }} \
+            --output ./publish/${{ matrix.rid }}
+
+      - name: Create archive (Unix)
+        if: runner.os != 'Windows'
+        run: |
+          cd ./publish
+          tar -czvf orbitrap-console-${{ matrix.rid }}.tar.gz ${{ matrix.rid }}
+
+      - name: Create archive (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          cd ./publish
+          Compress-Archive -Path ${{ matrix.rid }} -DestinationPath orbitrap-console-${{ matrix.rid }}.zip
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dotnet-${{ matrix.rid }}
+          path: ./publish/orbitrap-console-${{ matrix.rid }}.*
+
+  # ==========================================================================
+  # Build Rust Binaries
+  # ==========================================================================
+  rust-binaries:
+    name: Rust ${{ matrix.target }}
+    runs-on: ${{ matrix.os }}
+    needs: validate
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            artifact: lc-ms-simulator
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            artifact: lc-ms-simulator.exe
+          - os: macos-latest
+            target: x86_64-apple-darwin
+            artifact: lc-ms-simulator
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            artifact: lc-ms-simulator
+
+    defaults:
+      run:
+        working-directory: src/rust/lc-ms-simulator
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Build
+        run: cargo build --release --target ${{ matrix.target }}
+
+      - name: Create archive (Unix)
+        if: runner.os != 'Windows'
+        run: |
+          cd target/${{ matrix.target }}/release
+          tar -czvf ../../../lc-ms-simulator-${{ matrix.target }}.tar.gz ${{ matrix.artifact }}
+
+      - name: Create archive (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          cd target/${{ matrix.target }}/release
+          Compress-Archive -Path ${{ matrix.artifact }} -DestinationPath ../../../lc-ms-simulator-${{ matrix.target }}.zip
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: rust-${{ matrix.target }}
+          path: src/rust/lc-ms-simulator/lc-ms-simulator-${{ matrix.target }}.*
+
+  # ==========================================================================
+  # Docker Images
+  # ==========================================================================
+  docker:
+    name: Docker Images
+    runs-on: ubuntu-latest
+    needs: validate
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push simulator
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: docker/Dockerfile.simulator
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}/simulator:${{ needs.validate.outputs.version }}
+            ghcr.io/${{ github.repository }}/simulator:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ==========================================================================
+  # Create GitHub Release
+  # ==========================================================================
+  release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    needs: [validate, nuget, dotnet-binaries, rust-binaries, docker]
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: ./artifacts
+
+      - name: List artifacts
+        run: find ./artifacts -type f
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ needs.validate.outputs.version }}
+          name: Release v${{ needs.validate.outputs.version }}
+          draft: false
+          prerelease: ${{ contains(needs.validate.outputs.version, '-') }}
+          generate_release_notes: true
+          files: |
+            ./artifacts/**/*.nupkg
+            ./artifacts/**/*.tar.gz
+            ./artifacts/**/*.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ==========================================================================
+  # Publish NuGet
+  # ==========================================================================
+  publish-nuget:
+    name: Publish to NuGet
+    runs-on: ubuntu-latest
+    needs: [validate, release]
+    if: ${{ !contains(needs.validate.outputs.version, '-') }}  # Only stable releases
+
+    steps:
+      - name: Download NuGet packages
+        uses: actions/download-artifact@v4
+        with:
+          name: nuget-packages
+          path: ./packages
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Publish to NuGet
+        run: |
+          for package in ./packages/*.nupkg; do
+            dotnet nuget push "$package" \
+              --api-key ${{ secrets.NUGET_API_KEY }} \
+              --source https://api.nuget.org/v3/index.json \
+              --skip-duplicate
+          done
+        env:
+          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}

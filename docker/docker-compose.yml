@@ -1,0 +1,115 @@
+# Docker Compose for local development
+# Usage:
+#   docker-compose up -d              # Start all services
+#   docker-compose up simulator       # Start only simulator
+#   docker-compose logs -f            # Follow logs
+#   docker-compose down               # Stop all services
+
+version: '3.8'
+
+services:
+  # ==========================================================================
+  # Rust LC-MS Simulator
+  # ==========================================================================
+  simulator:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.simulator
+    container_name: orbitrap-simulator
+    ports:
+      - "31417:31417"
+    environment:
+      - RUST_LOG=info
+    healthcheck:
+      test: ["CMD", "timeout", "5", "bash", "-c", "</dev/tcp/localhost/31417"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+    restart: unless-stopped
+    networks:
+      - orbitrap-network
+
+  # ==========================================================================
+  # .NET Console Application
+  # ==========================================================================
+  console:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.console
+    container_name: orbitrap-console
+    depends_on:
+      simulator:
+        condition: service_healthy
+    environment:
+      - Instrument__Mode=Mock
+      - Instrument__Mock__Host=simulator
+      - Instrument__Mock__Port=31417
+    networks:
+      - orbitrap-network
+    # Interactive mode - comment out for background execution
+    stdin_open: true
+    tty: true
+
+  # ==========================================================================
+  # Observability: Jaeger (Distributed Tracing)
+  # ==========================================================================
+  jaeger:
+    image: jaegertracing/all-in-one:1.53
+    container_name: orbitrap-jaeger
+    ports:
+      - "6831:6831/udp"   # Thrift compact
+      - "16686:16686"     # Web UI
+      - "14268:14268"     # HTTP collector
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+    networks:
+      - orbitrap-network
+    profiles:
+      - observability
+
+  # ==========================================================================
+  # Observability: Prometheus (Metrics)
+  # ==========================================================================
+  prometheus:
+    image: prom/prometheus:v2.48.0
+    container_name: orbitrap-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.enable-lifecycle'
+    networks:
+      - orbitrap-network
+    profiles:
+      - observability
+
+  # ==========================================================================
+  # Observability: Grafana (Dashboards)
+  # ==========================================================================
+  grafana:
+    image: grafana/grafana:10.2.2
+    container_name: orbitrap-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana-data:/var/lib/grafana
+    depends_on:
+      - prometheus
+    networks:
+      - orbitrap-network
+    profiles:
+      - observability
+
+networks:
+  orbitrap-network:
+    driver: bridge
+
+volumes:
+  grafana-data:

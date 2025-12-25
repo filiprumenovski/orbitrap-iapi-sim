@@ -1,0 +1,51 @@
+# .NET Console Application Docker Image
+# Multi-stage build for minimal final image
+
+# =============================================================================
+# Stage 1: Build
+# =============================================================================
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS builder
+
+WORKDIR /build
+
+# Copy solution and project files first for layer caching
+COPY Orbitrap.sln ./
+COPY src/dotnet/Orbitrap.Abstractions/*.csproj ./src/dotnet/Orbitrap.Abstractions/
+COPY src/dotnet/Orbitrap.Mock/*.csproj ./src/dotnet/Orbitrap.Mock/
+COPY src/dotnet/Orbitrap.Real/*.csproj ./src/dotnet/Orbitrap.Real/
+COPY src/dotnet/Orbitrap.Integration/*.csproj ./src/dotnet/Orbitrap.Integration/
+COPY samples/Orbitrap.Console/*.csproj ./samples/Orbitrap.Console/
+COPY protos/ ./protos/
+
+# Restore dependencies (cached layer)
+RUN dotnet restore Orbitrap.sln
+
+# Copy all source code
+COPY src/dotnet/ ./src/dotnet/
+COPY samples/ ./samples/
+
+# Build and publish
+RUN dotnet publish samples/Orbitrap.Console \
+    --configuration Release \
+    --no-restore \
+    --output /app
+
+# =============================================================================
+# Stage 2: Runtime
+# =============================================================================
+FROM mcr.microsoft.com/dotnet/runtime:8.0 AS runtime
+
+WORKDIR /app
+
+# Create non-root user
+RUN useradd --create-home --shell /bin/bash appuser
+
+# Copy published app
+COPY --from=builder /app .
+
+# Set ownership
+RUN chown -R appuser:appuser /app
+
+USER appuser
+
+ENTRYPOINT ["dotnet", "Orbitrap.Console.dll"]

@@ -1,0 +1,79 @@
+# .NET
+bin/
+obj/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+.vs/
+*.dll
+*.exe
+*.pdb
+
+# NuGet
+packages/
+*.nupkg
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# Rust
+target/
+Cargo.lock
+
+# Build results
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+bld/
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+
+# IDE
+.idea/
+*.swp
+*.swo
+*~
+.vscode/
+
+# Generated proto files
+src/rust/lc-ms-simulator/src/proto/*.rs
+!src/rust/lc-ms-simulator/src/proto.rs
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test results
+TestResults/
+*.trx
+coverage/
+*.coverage
+
+# User files
+*.rsuser
+*.user.config
+
+# Publish output
+publish/
+
+# Local environment
+.env
+.env.local
+*.local
+
+# Docker
+docker-compose.override.yml
+
+# Editor backups
+*~
+\#*\#
+.\#*
+
+# CI/CD
+.claude/

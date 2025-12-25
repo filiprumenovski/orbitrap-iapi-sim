@@ -1,0 +1,38 @@
+# Git
+.git
+.gitignore
+
+# Build artifacts
+**/bin/
+**/obj/
+**/target/
+**/out/
+
+# IDE
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+
+# Test results
+**/TestResults/
+**/coverage/
+
+# Documentation
+*.md
+!README.md
+docs/
+
+# Local files
+*.local
+*.env.local
+.env
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
