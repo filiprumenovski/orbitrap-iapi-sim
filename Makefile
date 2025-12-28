@@ -12,7 +12,7 @@
         rust-build rust-run rust-test rust-clean rust-fmt rust-lint \
         format format-check lint \
         pack publish \
-        docker-build-simulator docker-run-simulator \
+		docker-build-simulator docker-run-simulator docker-build-console docker-run-console docker-compose-up docker-compose-down \
         setup info ci verify
 
 # Default target - show help
@@ -51,6 +51,12 @@ help:
 	@echo "PACKAGING:"
 	@echo "  make pack           Create NuGet packages"
 	@echo "  make publish        Publish console app"
+	@echo ""
+	@echo "DOCKER:"
+	@echo "  make docker-build-simulator  Build Rust simulator image"
+	@echo "  make docker-build-console    Build .NET console image"
+	@echo "  make docker-compose-up       Start simulator+console"
+	@echo "  make docker-compose-down     Stop compose stack"
 	@echo ""
 	@echo "CI/CD:"
 	@echo "  make ci             Full CI pipeline"
@@ -167,8 +173,20 @@ publish:
 docker-build-simulator:
 	docker build -t orbitrap-simulator:latest -f docker/Dockerfile.simulator .
 
+docker-build-console:
+	docker build -t orbitrap-console:latest -f docker/Dockerfile.console .
+
 docker-run-simulator:
 	docker run -p 31417:31417 orbitrap-simulator:latest
+
+docker-run-console:
+	docker run --rm -it --network host orbitrap-console:latest
+
+docker-compose-up:
+	docker compose -f docker/docker-compose.yml up --build
+
+docker-compose-down:
+	docker compose -f docker/docker-compose.yml down
 
 # ============================================================================
 # DEVELOPMENT

@@ -166,9 +166,25 @@ publish-self-contained rid="osx-arm64":
 docker-build-simulator:
     docker build -t orbitrap-simulator:latest -f docker/Dockerfile.simulator .
 
+# Build Docker image for .NET console
+docker-build-console:
+    docker build -t orbitrap-console:latest -f docker/Dockerfile.console .
+
 # Run Rust simulator in Docker
 docker-run-simulator port="31417":
     docker run -p {{port}}:31417 orbitrap-simulator:latest
+
+# Run .NET console (requires either host networking support or docker compose)
+docker-run-console:
+    docker run --rm -it --network host orbitrap-console:latest
+
+# Bring up local stack (simulator + console)
+docker-compose-up:
+    docker compose -f docker/docker-compose.yml up --build
+
+# Tear down local stack
+docker-compose-down:
+    docker compose -f docker/docker-compose.yml down
 
 # ============================================================================
 # DEVELOPMENT

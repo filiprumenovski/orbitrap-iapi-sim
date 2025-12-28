@@ -4,11 +4,13 @@
 # =============================================================================
 # Stage 1: Build
 # =============================================================================
-FROM mcr.microsoft.com/dotnet/sdk:8.0 AS builder
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS builder
 
-WORKDIR /build
+WORKDIR /src
 
 # Copy solution and project files first for layer caching
+COPY Directory.Build.props ./
+COPY global.json ./
 COPY Orbitrap.sln ./
 COPY src/dotnet/Orbitrap.Abstractions/*.csproj ./src/dotnet/Orbitrap.Abstractions/
 COPY src/dotnet/Orbitrap.Mock/*.csproj ./src/dotnet/Orbitrap.Mock/
@@ -18,7 +20,7 @@ COPY samples/Orbitrap.Console/*.csproj ./samples/Orbitrap.Console/
 COPY protos/ ./protos/
 
 # Restore dependencies (cached layer)
-RUN dotnet restore Orbitrap.sln
+RUN dotnet restore samples/Orbitrap.Console/Orbitrap.Console.csproj
 
 # Copy all source code
 COPY src/dotnet/ ./src/dotnet/
@@ -33,7 +35,7 @@ RUN dotnet publish samples/Orbitrap.Console \
 # =============================================================================
 # Stage 2: Runtime
 # =============================================================================
-FROM mcr.microsoft.com/dotnet/runtime:8.0 AS runtime
+FROM mcr.microsoft.com/dotnet/runtime:10.0 AS runtime
 
 WORKDIR /app
 

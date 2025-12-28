@@ -1,11 +1,5 @@
 # Orbitrap IAPI Simulator
 
-**Production-grade mock implementation of the ThermoFisher Orbitrap Instrument API for proteomics software development.**
-
-[![CI](https://github.com/yourusername/orbitrap-iapi-sim/actions/workflows/ci.yml/badge.svg)](https://github.com/yourusername/orbitrap-iapi-sim/actions/workflows/ci.yml)
-[![codecov](https://codecov.io/gh/yourusername/orbitrap-iapi-sim/branch/main/graph/badge.svg)](https://codecov.io/gh/yourusername/orbitrap-iapi-sim)
-[![NuGet](https://img.shields.io/nuget/v/Orbitrap.Abstractions.svg)](https://www.nuget.org/packages/Orbitrap.Abstractions)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 ---
 
@@ -232,47 +226,47 @@ public interface IOrbitrapInstrument : IAsyncDisposable, IDisposable
 
 ```
 orbitrap-iapi-sim/
+├── Directory.Build.props
+├── .dockerignore
+├── global.json
+├── Orbitrap.sln
+├── README.md
+├── Makefile
+├── justfile
+├── run-tests.sh
+├── data/
+│   └── sample.mzML
+├── docker/
+│   ├── Dockerfile.console
+│   ├── Dockerfile.simulator
+│   ├── docker-compose.yml
+│   ├── prometheus.yml
+│   └── .dockerignore
+├── protos/
+│   └── simulator.proto
+├── samples/
+│   ├── Orbitrap.Console/
+│   ├── VirtualOrbitrap.BasicUsage/
+│   └── VirtualOrbitrap.StreamingSimulation/
 ├── src/
 │   ├── dotnet/
-│   │   ├── Orbitrap.Abstractions/     # Core interfaces, no dependencies
-│   │   │   ├── IOrbitrapScan.cs
-│   │   │   ├── IOrbitrapInstrument.cs
-│   │   │   ├── FrozenOrbitrapScan.cs
-│   │   │   ├── ScanResult.cs
-│   │   │   └── Diagnostics/
-│   │   │       └── OrbitrapMetrics.cs
-│   │   ├── Orbitrap.Mock/             # Mock implementation
-│   │   │   ├── MockMsScan.cs
-│   │   │   ├── MockOrbitrapInstrument.cs
-│   │   │   └── Configuration/
-│   │   │       └── InstrumentOptions.cs
-│   │   ├── Orbitrap.Real/             # Thermo IAPI adapter (Windows)
-│   │   └── Orbitrap.Integration/      # Factory, DI, pipelines
-│   │       ├── InstrumentFactory.cs
-│   │       └── ServiceCollectionExtensions.cs
+│   │   ├── Orbitrap.Abstractions/
+│   │   ├── Orbitrap.Integration/
+│   │   ├── Orbitrap.Mock/
+│   │   ├── Orbitrap.Real/
+│   │   ├── VirtualOrbitrap.Builders/
+│   │   ├── VirtualOrbitrap.Enrichment/
+│   │   ├── VirtualOrbitrap.IAPI/
+│   │   ├── VirtualOrbitrap.Parsers/
+│   │   ├── VirtualOrbitrap.Pipeline/
+│   │   └── VirtualOrbitrap.Schema/
 │   └── rust/
-│       └── lc-ms-simulator/           # High-performance gRPC server
-│           ├── src/
-│           │   ├── main.rs
-│           │   ├── service.rs
-│           │   └── simulator.rs
-│           └── Cargo.toml
-├── protos/
-│   └── simulator.proto                # gRPC contract
-├── tests/
-│   ├── Orbitrap.Abstractions.Tests/
-│   ├── Orbitrap.Mock.Tests/
-│   └── Orbitrap.Integration.Tests/
-├── samples/
-│   └── Orbitrap.Console/
-├── docker/
-│   ├── Dockerfile.simulator
-│   ├── Dockerfile.console
-│   └── docker-compose.yml
-├── Orbitrap.sln
-├── justfile
-├── Makefile
-└── README.md
+│       └── lc-ms-simulator/
+└── tests/
+    ├── Orbitrap.Abstractions.Tests/
+    ├── Orbitrap.Integration.Tests/
+    ├── Orbitrap.Mock.Tests/
+    └── VirtualOrbitrap.Tests/
 ```
 
 ### Data Flow

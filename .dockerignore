@@ -1,0 +1,38 @@
+# Docker build context ignore
+# NOTE: docker-compose.yml uses repo root as build context (context: ..),
+# so this file must live at repo root to be effective.
+
+# VCS
+.git/
+
+# .NET build outputs
+**/bin/
+**/obj/
+
+# Rust build outputs
+**/target/
+
+# Test & coverage
+**/TestResults/
+**/coverage/
+
+# IDE
+.vs/
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Local env
+.env
+.env.local
+*.local
+
+# Docs (not needed for build)
+*.md
+!README.md
+
+# Misc
+**/*.log
