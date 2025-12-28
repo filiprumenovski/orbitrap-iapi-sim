@@ -22,7 +22,7 @@ public static class OrbitrapMetrics
     public static readonly Counter<long> ScansReceived =
         Meter.CreateCounter<long>(
             "orbitrap.scans.received",
-            unit: "scans",
+            unit: "{scans}",
             description: "Total number of scans received from the instrument");
 
     /// <summary>
@@ -32,7 +32,7 @@ public static class OrbitrapMetrics
     public static readonly Counter<long> ScansProcessed =
         Meter.CreateCounter<long>(
             "orbitrap.scans.processed",
-            unit: "scans",
+            unit: "{scans}",
             description: "Total number of scans processed by consumers");
 
     /// <summary>
@@ -42,7 +42,7 @@ public static class OrbitrapMetrics
     public static readonly Counter<long> ScansDropped =
         Meter.CreateCounter<long>(
             "orbitrap.scans.dropped",
-            unit: "scans",
+            unit: "{scans}",
             description: "Scans dropped due to buffer overflow or errors");
 
     /// <summary>
@@ -62,7 +62,7 @@ public static class OrbitrapMetrics
     public static readonly Histogram<int> ScanPeakCount =
         Meter.CreateHistogram<int>(
             "orbitrap.scan.peak_count",
-            unit: "peaks",
+            unit: "{peaks}",
             description: "Number of peaks per scan");
 
     /// <summary>
@@ -72,7 +72,7 @@ public static class OrbitrapMetrics
     public static readonly Histogram<double> ScanTIC =
         Meter.CreateHistogram<double>(
             "orbitrap.scan.tic",
-            unit: "counts",
+            unit: "{counts}",
             description: "Total ion current per scan");
 
     /// <summary>

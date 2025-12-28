@@ -1,4 +1,6 @@
 use rand::Rng;
+use rand::SeedableRng;
+use rand::rngs::StdRng;
 use rand_distr::{Distribution, Normal};
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -8,7 +10,7 @@ use crate::proto::{FragmentationType, Polarity, ScanMessage};
 pub struct ScanGenerator {
     scan_number: i32,
     retention_time: f64,
-    random: rand::rngs::ThreadRng,
+    random: StdRng,
 }
 
 impl ScanGenerator {
@@ -16,17 +18,17 @@ impl ScanGenerator {
         Self {
             scan_number: 0,
             retention_time: 0.0,
-            random: rand::thread_rng(),
+            random: StdRng::from_entropy(),
         }
     }
 
     /// Generates an MS1 (survey) scan
-    pub fn generate_ms1(&mut self) -> ScanMessage {
+    pub fn generate_ms1(&mut self, min_mz: f64, max_mz: f64, peak_count_override: Option<usize>) -> ScanMessage {
         self.scan_number += 1;
 
-        // Generate realistic peak count (500-2000 for MS1)
-        let peak_count = self.random.gen_range(500..2000);
-        let (mz_values, intensity_values) = self.generate_spectrum(peak_count, 200.0, 2000.0, 1e6, 1e8);
+        // Generate realistic peak count (500-2000 for MS1) unless overridden (stress tests).
+        let peak_count = peak_count_override.unwrap_or_else(|| self.random.gen_range(500..2000));
+        let (mz_values, intensity_values) = self.generate_spectrum(peak_count, min_mz, max_mz, 1e6, 1e8);
 
         // Calculate aggregates
         let (base_peak_mz, base_peak_intensity, tic) = calculate_aggregates(&mz_values, &intensity_values);
@@ -45,7 +47,7 @@ impl ScanGenerator {
             precursor_intensity: None,
             isolation_width: None,
             collision_energy: None,
-            fragmentation_type: FragmentationType::Unknown as i32,
+            fragmentation_type: FragmentationType::FragmentationUnknown as i32,
             analyzer: "Orbitrap".to_string(),
             resolution_at_mz200: 120000.0,
             mass_accuracy_ppm: 3.0,
@@ -61,11 +63,11 @@ impl ScanGenerator {
     }
 
     /// Generates an MS2 (fragmentation) scan based on a precursor
-    pub fn generate_ms2(&mut self, precursor_mz: f64, precursor_intensity: f64) -> ScanMessage {
+    pub fn generate_ms2(&mut self, precursor_mz: f64, precursor_intensity: f64, peak_count_override: Option<usize>) -> ScanMessage {
         self.scan_number += 1;
 
-        // MS2 scans have fewer peaks (50-300)
-        let peak_count = self.random.gen_range(50..300);
+        // MS2 scans have fewer peaks (50-300) unless overridden (stress tests).
+        let peak_count = peak_count_override.unwrap_or_else(|| self.random.gen_range(50..300));
 
         // Fragments are typically lower m/z than precursor
         let max_mz = precursor_mz * 0.95;
@@ -95,7 +97,7 @@ impl ScanGenerator {
             precursor_intensity: Some(precursor_intensity),
             isolation_width: Some(1.6),
             collision_energy: Some(30.0),
-            fragmentation_type: FragmentationType::Hcd as i32,
+            fragmentation_type: FragmentationType::FragmentationHcd as i32,
             analyzer: "Orbitrap".to_string(),
             resolution_at_mz200: 30000.0, // Lower resolution for MS2
             mass_accuracy_ppm: 5.0,

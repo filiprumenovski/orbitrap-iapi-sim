@@ -2,8 +2,8 @@
 # Used with docker-compose observability profile
 
 global:
-  scrape_interval: 15s
-  evaluation_interval: 15s
+  scrape_interval: 1s
+  evaluation_interval: 1s
 
 scrape_configs:
   # Prometheus self-monitoring
@@ -18,8 +18,14 @@ scrape_configs:
   #     - targets: ['simulator:9100']
   #   metrics_path: /metrics
 
-  # .NET application metrics (if using OpenTelemetry Prometheus exporter)
-  # - job_name: 'orbitrap-console'
-  #   static_configs:
-  #     - targets: ['console:9464']
-  #   metrics_path: /metrics
+  # .NET console sample metrics
+  - job_name: 'orbitrap-console'
+    static_configs:
+      - targets: ['console:9464']
+    metrics_path: /metrics
+
+  # Stress test client metrics (running in Docker)
+  - job_name: 'orbitrap-stress'
+    static_configs:
+      - targets: ['stress:9465']
+    metrics_path: /metrics

@@ -1,0 +1,433 @@
+{
+  "id": null,
+  "uid": "orbitrap-iapi-simulator",
+  "title": "Orbitrap IAPI Simulator",
+  "description": "Real-time monitoring of Orbitrap IAPI Simulator performance. Shows scan throughput, MS1/MS2 distribution, and processing efficiency at 10k+ scans/sec.",
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "1s",
+  "tags": ["orbitrap", "mass-spectrometry", "high-throughput"],
+  "time": { "from": "now-5m", "to": "now" },
+  "editable": true,
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Scans/sec",
+      "description": "Current scan ingestion rate across all clients",
+      "gridPos": { "x": 0, "y": 0, "w": 6, "h": 4 },
+      "targets": [
+        {
+          "expr": "(sum(rate(orbitrap_console_scans_received_total[2s])) or vector(0)) + (sum(rate(orbitrap_stress_scans_received_total[2s])) or vector(0))",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "" },
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "textMode": "value",
+        "wideLayout": true
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 0,
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "#F2495C", "value": null },
+              { "color": "#FF9830", "value": 5000 },
+              { "color": "#73BF69", "value": 9000 }
+            ]
+          },
+          "noValue": "0"
+        }
+      }
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Total Scans",
+      "description": "Cumulative scans received since start",
+      "gridPos": { "x": 6, "y": 0, "w": 6, "h": 4 },
+      "targets": [
+        {
+          "expr": "(sum(orbitrap_console_scans_received_total) or vector(0)) + (sum(orbitrap_stress_scans_received_total) or vector(0))",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "" },
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "textMode": "value",
+        "wideLayout": true
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "color": { "mode": "fixed", "fixedColor": "#5794F2" },
+          "noValue": "0"
+        }
+      }
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Dropped",
+      "description": "Scans dropped due to buffer overflow (should be 0)",
+      "gridPos": { "x": 12, "y": 0, "w": 6, "h": 4 },
+      "targets": [
+        {
+          "expr": "sum(increase(orbitrap_scans_dropped_total[5m])) or vector(0)",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "" },
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "textMode": "value",
+        "wideLayout": true
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 0,
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "#73BF69", "value": null },
+              { "color": "#FF9830", "value": 1 },
+              { "color": "#F2495C", "value": 10 }
+            ]
+          },
+          "noValue": "0"
+        }
+      }
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Efficiency",
+      "description": "Processing efficiency (processed/received ratio)",
+      "gridPos": { "x": 18, "y": 0, "w": 6, "h": 4 },
+      "targets": [
+        {
+          "expr": "100 * ((sum(rate(orbitrap_console_scans_processed_total[2s])) or vector(0)) + (sum(rate(orbitrap_stress_scans_processed_total[2s])) or vector(0))) / ((sum(rate(orbitrap_console_scans_received_total[2s])) or vector(0)) + (sum(rate(orbitrap_stress_scans_received_total[2s])) or vector(1)))",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "" },
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "textMode": "value",
+        "wideLayout": true
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 1,
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "#F2495C", "value": null },
+              { "color": "#FF9830", "value": 95 },
+              { "color": "#73BF69", "value": 99 }
+            ]
+          },
+          "noValue": "100"
+        }
+      }
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Scan Throughput",
+      "description": "Real-time scan ingestion and processing rates",
+      "gridPos": { "x": 0, "y": 4, "w": 24, "h": 8 },
+      "targets": [
+        {
+          "expr": "(sum(rate(orbitrap_console_scans_received_total[2s])) or vector(0)) + (sum(rate(orbitrap_stress_scans_received_total[2s])) or vector(0))",
+          "legendFormat": "received",
+          "refId": "A"
+        },
+        {
+          "expr": "(sum(rate(orbitrap_console_scans_processed_total[2s])) or vector(0)) + (sum(rate(orbitrap_stress_scans_processed_total[2s])) or vector(0))",
+          "legendFormat": "processed",
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "fillOpacity": 30,
+            "gradientMode": "opacity",
+            "showPoints": "never",
+            "spanNulls": true,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisPlacement": "auto",
+            "scaleDistribution": { "type": "linear" },
+            "stacking": { "mode": "none" }
+          },
+          "noValue": "0"
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "received" },
+            "properties": [
+              { "id": "color", "value": { "fixedColor": "#5794F2", "mode": "fixed" } }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "processed" },
+            "properties": [
+              { "id": "color", "value": { "fixedColor": "#73BF69", "mode": "fixed" } }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true,
+          "calcs": ["mean", "max"]
+        },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      }
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "Peak Count Distribution",
+      "description": "Percentiles of peaks per scan (p50/p95/p99)",
+      "gridPos": { "x": 0, "y": 12, "w": 12, "h": 7 },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.50, sum by (le) (rate(orbitrap_stress_scan_peak_count_peaks_bucket[30s])))",
+          "legendFormat": "p50",
+          "refId": "A"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(orbitrap_stress_scan_peak_count_peaks_bucket[30s])))",
+          "legendFormat": "p95",
+          "refId": "B"
+        },
+        {
+          "expr": "histogram_quantile(0.99, sum by (le) (rate(orbitrap_stress_scan_peak_count_peaks_bucket[30s])))",
+          "legendFormat": "p99",
+          "refId": "C"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 20,
+            "showPoints": "never",
+            "spanNulls": true
+          },
+          "noValue": "-"
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "p50" },
+            "properties": [{ "id": "color", "value": { "fixedColor": "#73BF69", "mode": "fixed" } }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "p95" },
+            "properties": [{ "id": "color", "value": { "fixedColor": "#FF9830", "mode": "fixed" } }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "p99" },
+            "properties": [{ "id": "color", "value": { "fixedColor": "#F2495C", "mode": "fixed" } }]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": ["mean"]
+        },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      }
+    },
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "Total Ion Current",
+      "description": "TIC percentiles across scans (intensity distribution)",
+      "gridPos": { "x": 12, "y": 12, "w": 12, "h": 7 },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.50, sum by (le) (rate(orbitrap_stress_scan_tic_counts_bucket[30s])))",
+          "legendFormat": "p50",
+          "refId": "A"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(orbitrap_stress_scan_tic_counts_bucket[30s])))",
+          "legendFormat": "p95",
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 40,
+            "gradientMode": "opacity",
+            "showPoints": "never",
+            "spanNulls": true
+          },
+          "noValue": "-"
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "p50" },
+            "properties": [{ "id": "color", "value": { "fixedColor": "#B877D9", "mode": "fixed" } }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "p95" },
+            "properties": [{ "id": "color", "value": { "fixedColor": "#FF6B6B", "mode": "fixed" } }]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": ["mean"]
+        },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      }
+    },
+    {
+      "id": 8,
+      "type": "piechart",
+      "title": "MS Distribution",
+      "description": "Breakdown of MS1 vs MS2 scans",
+      "gridPos": { "x": 0, "y": 19, "w": 12, "h": 7 },
+      "targets": [
+        {
+          "expr": "(sum by (ms_order) (increase(orbitrap_console_scans_received_total[5m])) or vector(0)) + (sum by (ms_order) (increase(orbitrap_stress_scans_received_total[5m])) or vector(0))",
+          "legendFormat": "MS{{ms_order}}",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "pieType": "donut",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "" },
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true,
+          "values": ["value", "percent"]
+        },
+        "tooltip": { "mode": "single" },
+        "displayLabels": []
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "noValue": "0"
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "MS1" },
+            "properties": [{ "id": "color", "value": { "fixedColor": "#5794F2", "mode": "fixed" } }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "MS2" },
+            "properties": [{ "id": "color", "value": { "fixedColor": "#FF9830", "mode": "fixed" } }]
+          }
+        ]
+      }
+    },
+    {
+      "id": 9,
+      "type": "timeseries",
+      "title": "Throughput by MS Order",
+      "description": "Stacked view of MS1 and MS2 scan rates",
+      "gridPos": { "x": 12, "y": 19, "w": 12, "h": 7 },
+      "targets": [
+        {
+          "expr": "(sum(rate(orbitrap_console_scans_received_total{ms_order=\"1\"}[2s])) or vector(0)) + (sum(rate(orbitrap_stress_scans_received_total{ms_order=\"1\"}[2s])) or vector(0))",
+          "legendFormat": "MS1",
+          "refId": "A"
+        },
+        {
+          "expr": "(sum(rate(orbitrap_console_scans_received_total{ms_order=\"2\"}[2s])) or vector(0)) + (sum(rate(orbitrap_stress_scans_received_total{ms_order=\"2\"}[2s])) or vector(0))",
+          "legendFormat": "MS2",
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 40,
+            "gradientMode": "opacity",
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": { "mode": "normal" }
+          },
+          "noValue": "0"
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "MS1" },
+            "properties": [{ "id": "color", "value": { "fixedColor": "#5794F2", "mode": "fixed" } }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "MS2" },
+            "properties": [{ "id": "color", "value": { "fixedColor": "#FF9830", "mode": "fixed" } }]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true,
+          "calcs": ["mean"]
+        },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      }
+    }
+  ],
+  "annotations": { "list": [] },
+  "templating": { "list": [] }
+}

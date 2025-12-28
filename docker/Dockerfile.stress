@@ -1,4 +1,4 @@
-# .NET Console Application Docker Image
+# .NET Stress Test Client Docker Image
 # Multi-stage build for minimal final image
 
 # =============================================================================
@@ -16,18 +16,18 @@ COPY src/dotnet/Orbitrap.Abstractions/*.csproj ./src/dotnet/Orbitrap.Abstraction
 COPY src/dotnet/Orbitrap.Mock/*.csproj ./src/dotnet/Orbitrap.Mock/
 COPY src/dotnet/Orbitrap.Real/*.csproj ./src/dotnet/Orbitrap.Real/
 COPY src/dotnet/Orbitrap.Integration/*.csproj ./src/dotnet/Orbitrap.Integration/
-COPY samples/Orbitrap.Console/*.csproj ./samples/Orbitrap.Console/
+COPY samples/Orbitrap.GrpcStress/*.csproj ./samples/Orbitrap.GrpcStress/
 COPY protos/ ./protos/
 
 # Restore dependencies (cached layer)
-RUN dotnet restore samples/Orbitrap.Console/Orbitrap.Console.csproj
+RUN dotnet restore samples/Orbitrap.GrpcStress/Orbitrap.GrpcStress.csproj
 
 # Copy all source code
 COPY src/dotnet/ ./src/dotnet/
 COPY samples/ ./samples/
 
 # Build and publish
-RUN dotnet publish samples/Orbitrap.Console \
+RUN dotnet publish samples/Orbitrap.GrpcStress \
     --configuration Release \
     --no-restore \
     --output /app
@@ -50,4 +50,5 @@ RUN chown -R appuser:appuser /app
 
 USER appuser
 
-ENTRYPOINT ["dotnet", "Orbitrap.Console.dll"]
+# Entry point reads environment variables
+ENTRYPOINT ["sh", "-c", "dotnet Orbitrap.GrpcStress.dll --endpoint ${ENDPOINT:-http://localhost:31417} --duration ${DURATION:-120} --warmup ${WARMUP:-5} --scan-rate ${SCAN_RATE:-10000} --ms2-per-ms1 ${MS2_PER_MS1:-4} --ms1-peaks ${MS1_PEAKS:-100} --ms2-peaks ${MS2_PEAKS:-50} --metrics-port ${METRICS_PORT:-9465} --quiet"]

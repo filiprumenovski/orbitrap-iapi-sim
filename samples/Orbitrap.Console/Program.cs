@@ -1,15 +1,17 @@
+using System.Diagnostics;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Trace;
 using Orbitrap.Abstractions;
 using Orbitrap.Abstractions.Diagnostics;
+using Orbitrap.Console.Observability;
 using Orbitrap.Integration;
 using Orbitrap.Mock.Configuration;
 
-// Build host with DI and OpenTelemetry
-var builder = Host.CreateApplicationBuilder(args);
+// Build web host (still a console app) so we can expose /metrics for Prometheus.
+var builder = WebApplication.CreateBuilder(args);
 
 // Configure logging
 builder.Logging.AddConsole();
@@ -28,13 +30,27 @@ builder.Services.AddOpenTelemetry()
         .AddConsoleExporter())
     .WithMetrics(metrics => metrics
         .AddMeter(OrbitrapMetrics.MeterName)
-        .AddConsoleExporter());
+        .AddMeter(ConsoleMetrics.MeterName)
+        .AddConsoleExporter()
+        .AddPrometheusExporter());
 
-var host = builder.Build();
+var app = builder.Build();
+
+var metricsPort = Environment.GetEnvironmentVariable("METRICS_PORT") ?? "9464";
+var metricsHost = Environment.GetEnvironmentVariable("METRICS_HOST") ?? "0.0.0.0";
+var metricsUrl = $"http://{metricsHost}:{metricsPort}";
+
+app.Urls.Clear();
+app.Urls.Add(metricsUrl);
+
+app.MapGet("/", () => "Orbitrap.Console is running");
+app.MapPrometheusScrapingEndpoint("/metrics");
+
+var appTask = app.RunAsync();
 
 // Get the instrument from DI
-var instrument = host.Services.GetRequiredService<IOrbitrapInstrument>();
-var logger = host.Services.GetRequiredService<ILoggerFactory>().CreateLogger("Demo");
+var instrument = app.Services.GetRequiredService<IOrbitrapInstrument>();
+var logger = app.Services.GetRequiredService<ILoggerFactory>().CreateLogger("Demo");
 
 logger.LogInformation("Connected to instrument: {Name} ({Id})",
     instrument.InstrumentName,
@@ -59,11 +75,20 @@ var cts = new CancellationTokenSource();
 instrument.ScanArrived += (sender, e) =>
 {
     var scan = e.Scan;
+
+    ConsoleMetrics.OnScanReceived(scan.MsOrder);
+    using var inflight = ConsoleMetrics.TrackInflight();
+    var sw = Stopwatch.StartNew();
+
     Console.WriteLine(
         $"  [Event] Scan #{scan.ScanNumber} MS{scan.MsOrder} " +
         $"RT={scan.RetentionTime:F3}min " +
         $"Peaks={scan.PeakCount} " +
         $"TIC={scan.TotalIonCurrent:E2}");
+
+    sw.Stop();
+    ConsoleMetrics.RecordProcessingMs(scan.MsOrder, sw.Elapsed.TotalMilliseconds);
+    ConsoleMetrics.OnScanProcessed(scan.MsOrder);
 
     if (Interlocked.Increment(ref scanCount) >= 10)
     {
@@ -79,6 +104,7 @@ var session = await instrument.StartAcquisitionAsync(new AcquisitionOptions
     BufferCapacity = 100
 }, cts.Token);
 
+ConsoleMetrics.OnAcquisitionStarted();
 Console.WriteLine($"  Session started: {session.SessionId}");
 Console.WriteLine();
 
@@ -116,6 +142,10 @@ await using (var session2 = await instrument2.StartAcquisitionAsync(new Acquisit
 {
     await foreach (var scan in session2.Scans)
     {
+        ConsoleMetrics.OnScanReceived(scan.MsOrder);
+        using var inflight = ConsoleMetrics.TrackInflight();
+        var sw = Stopwatch.StartNew();
+
         if (ms1Filter.Matches(scan))
         {
             var frozen = scan.ToFrozen();
@@ -126,6 +156,10 @@ await using (var session2 = await instrument2.StartAcquisitionAsync(new Acquisit
                 $"RT={frozen.RetentionTime:F3}min " +
                 $"BasePeak={frozen.BasePeakMz:F4} m/z @ {frozen.BasePeakIntensity:E2}");
         }
+
+            sw.Stop();
+            ConsoleMetrics.RecordProcessingMs(scan.MsOrder, sw.Elapsed.TotalMilliseconds);
+            ConsoleMetrics.OnScanProcessed(scan.MsOrder);
 
         if (collected.Count >= 5)
         {
@@ -170,8 +204,16 @@ try
 
     foreach (var scan in highTICScans)
     {
+        ConsoleMetrics.OnScanReceived(scan.MsOrder);
+        using var inflight = ConsoleMetrics.TrackInflight();
+        var sw = Stopwatch.StartNew();
+
         Console.WriteLine(
             $"  High TIC scan #{scan.ScanNumber}: TIC={scan.TotalIonCurrent:E2}");
+
+        sw.Stop();
+        ConsoleMetrics.RecordProcessingMs(scan.MsOrder, sw.Elapsed.TotalMilliseconds);
+        ConsoleMetrics.OnScanProcessed(scan.MsOrder);
     }
 }
 catch (OperationCanceledException)
@@ -183,5 +225,10 @@ await instrument3.DisposeAsync();
 
 Console.WriteLine();
 Console.WriteLine("════════════════════════════════════════════════════════════");
+Console.WriteLine($"Metrics available at: {metricsUrl}/metrics");
 Console.WriteLine("Demo complete! Press any key to exit.");
 Console.ReadKey();
+
+await app.StopAsync();
+await app.DisposeAsync();
+await appTask;

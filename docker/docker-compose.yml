@@ -45,11 +45,42 @@ services:
       - Instrument__Mode=Mock
       - Instrument__Mock__Host=simulator
       - Instrument__Mock__Port=31417
+      - METRICS_HOST=0.0.0.0
+      - METRICS_PORT=9464
+    ports:
+      - "9464:9464"
     networks:
       - orbitrap-network
     # Interactive mode - comment out for background execution
     stdin_open: true
     tty: true
+
+  # ==========================================================================
+  # Stress Test Client (runs inside Docker for Prometheus visibility)
+  # ==========================================================================
+  stress:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.stress
+    container_name: orbitrap-stress
+    depends_on:
+      simulator:
+        condition: service_healthy
+    environment:
+      - ENDPOINT=http://simulator:31417
+      - DURATION=300
+      - WARMUP=5
+      - SCAN_RATE=10000
+      - MS2_PER_MS1=4
+      - MS1_PEAKS=100
+      - MS2_PEAKS=50
+      - METRICS_PORT=9465
+    ports:
+      - "9465:9465"
+    networks:
+      - orbitrap-network
+    profiles:
+      - stress
 
   # ==========================================================================
   # Observability: Jaeger (Distributed Tracing)
@@ -96,10 +127,16 @@ services:
     ports:
       - "3000:3000"
     environment:
+      - GF_SECURITY_ADMIN_USER=admin
       - GF_SECURITY_ADMIN_PASSWORD=admin
       - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_USERS_DEFAULT_THEME=dark
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Viewer
     volumes:
       - grafana-data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
     depends_on:
       - prometheus
     networks:

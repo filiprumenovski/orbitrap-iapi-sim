@@ -159,6 +159,11 @@ message SimulationParameters {
 
   // Random seed for reproducibility (0 = random)
   int64 random_seed = 7;
+
+  // Optional fixed peak counts to control payload size (useful for stress testing)
+  // If omitted or <= 0, the simulator uses its default realistic ranges.
+  optional int32 ms1_peak_count = 8;
+  optional int32 ms2_peak_count = 9;
 }
 
 // Start acquisition response

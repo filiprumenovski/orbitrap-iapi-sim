@@ -6,6 +6,8 @@ use std::time::Duration;
 use tokio::sync::{broadcast, Mutex};
 use tokio_stream::wrappers::BroadcastStream;
 use tokio_stream::Stream;
+use tokio_stream::StreamExt;
+use tokio::time::MissedTickBehavior;
 use tonic::{Request, Response, Status};
 use tracing::{info, warn};
 
@@ -25,7 +27,8 @@ pub struct SimulatorServiceImpl {
 
 impl SimulatorServiceImpl {
     pub fn new(instrument_name: String, instrument_id: String) -> Self {
-        let (scan_sender, _) = broadcast::channel(1000);
+        // Large buffer to reduce lag/drops during high-rate streaming and stress tests.
+        let (scan_sender, _) = broadcast::channel(100_000);
 
         Self {
             instrument_name,
@@ -62,21 +65,44 @@ impl SimulatorServiceImpl {
         max_duration_seconds: Option<f64>,
     ) {
         let params = params.unwrap_or_default();
+        // Interpret scan_rate as *total scans per second* (MS1 + MS2).
+        // Use batching per timer tick to support high throughput (tokio sleep granularity
+        // is typically ~1ms, so per-scan sleeps can't hit 10k scans/sec).
         let scan_rate = if params.scan_rate > 0.0 { params.scan_rate } else { 2.0 };
         let ms2_per_ms1 = if params.ms2_per_ms1 > 0 { params.ms2_per_ms1 } else { 4 };
-        let delay_ms = (1000.0 / scan_rate) as u64;
+        let scans_per_cycle = 1i64 + ms2_per_ms1 as i64;
+        let cycles_per_second = scan_rate / scans_per_cycle as f64;
+
+        // 10ms tick keeps overhead low and still gives smooth pacing.
+        let tick = Duration::from_millis(10);
+        let cycles_per_tick = cycles_per_second * tick.as_secs_f64();
+        let mut cycle_accumulator = 0.0f64;
+
+        let mut interval = tokio::time::interval_at(tokio::time::Instant::now(), tick);
+        interval.set_missed_tick_behavior(MissedTickBehavior::Burst);
+
+        let min_mz = if params.min_mz > 0.0 { params.min_mz } else { 200.0 };
+        let max_mz = if params.max_mz > 0.0 { params.max_mz } else { 2000.0 };
+
+        let ms1_peak_count = params.ms1_peak_count.filter(|v| *v > 0).map(|v| v as usize);
+        let ms2_peak_count = params.ms2_peak_count.filter(|v| *v > 0).map(|v| v as usize);
 
         let start_time = std::time::Instant::now();
         let mut scans_generated = 0i64;
 
         info!(
-            "Starting acquisition: scan_rate={}, ms2_per_ms1={}",
-            scan_rate, ms2_per_ms1
+            "Starting acquisition: scan_rate={} scans/s, ms2_per_ms1={}, ms1_peaks={:?}, ms2_peaks={:?}",
+            scan_rate,
+            ms2_per_ms1,
+            ms1_peak_count,
+            ms2_peak_count
         );
 
         self.set_state(AcquisitionState::Acquiring);
 
         loop {
+            interval.tick().await;
+
             // Check termination conditions
             if self.get_state() == AcquisitionState::Stopping {
                 break;
@@ -89,53 +115,72 @@ impl SimulatorServiceImpl {
             }
 
             if let Some(max_secs) = max_duration_seconds {
-                if start_time.elapsed().as_secs_f64() >= max_secs {
+                if start_time.elapsed().as_secs_f64() > max_secs {
                     break;
                 }
             }
 
-            // Generate MS1 scan
-            let ms1_scan = {
-                let mut gen = self.generator.lock().await;
-                gen.generate_ms1()
-            };
+            cycle_accumulator += cycles_per_tick;
+            let cycles_to_run = cycle_accumulator.floor() as i64;
+            cycle_accumulator -= cycles_to_run as f64;
 
-            if self.scan_sender.send(ms1_scan.clone()).is_err() {
-                // No receivers, but that's OK
+            if cycles_to_run <= 0 {
+                continue;
             }
-            scans_generated += 1;
-            self.scan_count.fetch_add(1, Ordering::SeqCst);
 
-            // Generate MS2 scans
-            for _ in 0..ms2_per_ms1 {
+            for _ in 0..cycles_to_run {
+                // Re-check termination conditions within the batch.
                 if self.get_state() == AcquisitionState::Stopping {
                     break;
                 }
-
                 if let Some(max) = max_scans {
                     if scans_generated >= max as i64 {
                         break;
                     }
                 }
+                if let Some(max_secs) = max_duration_seconds {
+                    if start_time.elapsed().as_secs_f64() > max_secs {
+                        break;
+                    }
+                }
 
-                let ms2_scan = {
+                // Generate MS1 scan
+                let ms1_scan = {
                     let mut gen = self.generator.lock().await;
-                    let (precursor_mz, precursor_int) = gen.select_precursor(&ms1_scan);
-                    gen.generate_ms2(precursor_mz, precursor_int)
+                    gen.generate_ms1(min_mz, max_mz, ms1_peak_count)
                 };
 
-                if self.scan_sender.send(ms2_scan).is_err() {
-                    // No receivers
+                if self.scan_sender.send(ms1_scan.clone()).is_err() {
+                    // No receivers, but that's OK
                 }
                 scans_generated += 1;
                 self.scan_count.fetch_add(1, Ordering::SeqCst);
 
-                // Small delay between MS2 scans
-                tokio::time::sleep(Duration::from_millis(delay_ms / (ms2_per_ms1 as u64 + 1))).await;
-            }
+                // Generate MS2 scans
+                for _ in 0..ms2_per_ms1 {
+                    if self.get_state() == AcquisitionState::Stopping {
+                        break;
+                    }
 
-            // Delay for next cycle
-            tokio::time::sleep(Duration::from_millis(delay_ms)).await;
+                    if let Some(max) = max_scans {
+                        if scans_generated >= max as i64 {
+                            break;
+                        }
+                    }
+
+                    let ms2_scan = {
+                        let mut gen = self.generator.lock().await;
+                        let (precursor_mz, precursor_int) = gen.select_precursor(&ms1_scan);
+                        gen.generate_ms2(precursor_mz, precursor_int, ms2_peak_count)
+                    };
+
+                    if self.scan_sender.send(ms2_scan).is_err() {
+                        // No receivers
+                    }
+                    scans_generated += 1;
+                    self.scan_count.fetch_add(1, Ordering::SeqCst);
+                }
+            }
         }
 
         info!("Acquisition complete: {} scans generated", scans_generated);
@@ -281,26 +326,12 @@ impl simulator_service_server::SimulatorService for SimulatorServiceImpl {
             simulator_version: env!("CARGO_PKG_VERSION").to_string(),
             supported_analyzers: vec!["Orbitrap".to_string()],
             supported_fragmentation_types: vec![
-                FragmentationType::Hcd as i32,
-                FragmentationType::Cid as i32,
+                FragmentationType::FragmentationHcd as i32,
+                FragmentationType::FragmentationCid as i32,
             ],
             max_resolution: 480000.0,
             min_mz: 50.0,
             max_mz: 6000.0,
         }))
-    }
-}
-
-impl Default for SimulationParameters {
-    fn default() -> Self {
-        Self {
-            scan_rate: 2.0,
-            ms2_per_ms1: 4,
-            min_mz: 200.0,
-            max_mz: 2000.0,
-            resolution: 120000.0,
-            noise_level: 0.01,
-            random_seed: 0,
-        }
     }
 }

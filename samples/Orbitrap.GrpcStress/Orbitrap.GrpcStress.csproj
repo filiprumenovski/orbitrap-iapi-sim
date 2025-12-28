@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../src/dotnet/Orbitrap.Mock/Orbitrap.Mock.csproj" />
+    <ProjectReference Include="../../src/dotnet/Orbitrap.Abstractions/Orbitrap.Abstractions.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="OpenTelemetry.Exporter.Prometheus.HttpListener" Version="1.9.0-beta.2" />
+  </ItemGroup>
+
+</Project>
