@@ -274,8 +274,8 @@ public class MockOrbitrapInstrumentTests
         // Act
         await instrument.DisposeAsync();
 
-        // Assert - should not hang or throw, state should be stopped or idle
-        instrument.CurrentState.Should().BeOneOf(AcquisitionState.Stopped, AcquisitionState.Idle);
+        // Assert - should not hang or throw, state should be completed or idle
+        instrument.CurrentState.Should().BeOneOf(AcquisitionState.Completed, AcquisitionState.Idle);
     }
 
     [Fact]

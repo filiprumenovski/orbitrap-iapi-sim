@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <RootNamespace>VirtualOrbitrap.Pipeline</RootNamespace>
+    <Description>End-to-end pipeline wiring for mzML to VirtualRawData conversion</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\VirtualOrbitrap.Parsers\VirtualOrbitrap.Parsers.csproj" />
+    <ProjectReference Include="..\VirtualOrbitrap.Schema\VirtualOrbitrap.Schema.csproj" />
+    <ProjectReference Include="..\VirtualOrbitrap.Enrichment\VirtualOrbitrap.Enrichment.csproj" />
+    <ProjectReference Include="..\VirtualOrbitrap.Builders\VirtualOrbitrap.Builders.csproj" />
+    <ProjectReference Include="..\VirtualOrbitrap.IAPI\VirtualOrbitrap.IAPI.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <RootNamespace>VirtualOrbitrap.Parsers</RootNamespace>
+    <Description>mzML parser and scan DTOs for Virtual Orbitrap IAPI</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Intentionally no mzLib dependency: mzLib 1.0.571 ships Windows-only PE assemblies.
+         We use a minimal, cross-platform mzML (XML) parser instead. -->
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\VirtualOrbitrap.Schema\VirtualOrbitrap.Schema.csproj" />
+  </ItemGroup>
+
+</Project>

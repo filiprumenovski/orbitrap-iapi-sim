@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <RootNamespace>VirtualOrbitrap.IAPI</RootNamespace>
+    <Description>IAPI emitter for Virtual Orbitrap</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\VirtualOrbitrap.Schema\VirtualOrbitrap.Schema.csproj" />
+    <ProjectReference Include="..\VirtualOrbitrap.Enrichment\VirtualOrbitrap.Enrichment.csproj" />
+    <ProjectReference Include="..\VirtualOrbitrap.Builders\VirtualOrbitrap.Builders.csproj" />
+  </ItemGroup>
+
+</Project>
