@@ -65,6 +65,9 @@ test-mock:
 test-integration:
     dotnet test tests/Orbitrap.Integration.Tests --logger "console;verbosity=normal"
 
+test-virtualorbitrap:
+    dotnet test tests/VirtualOrbitrap.Tests --logger "console;verbosity=normal"
+
 # Run tests with filter
 test-filter filter:
     dotnet test Orbitrap.sln --filter "{{filter}}" --logger "console;verbosity=normal"
@@ -72,6 +75,9 @@ test-filter filter:
 # Watch tests (re-run on file changes)
 test-watch:
     dotnet watch test --project tests/Orbitrap.Mock.Tests
+
+test-watch-virtualorbitrap:
+    dotnet watch test --project tests/VirtualOrbitrap.Tests
 
 # ============================================================================
 # RUN

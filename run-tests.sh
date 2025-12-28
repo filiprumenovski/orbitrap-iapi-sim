@@ -2,7 +2,7 @@
 # Orbitrap IAPI Simulator - Test Runner
 #
 # Prerequisites:
-#   - .NET 8 SDK: https://dotnet.microsoft.com/download/dotnet/8.0
+#   - .NET 10 SDK (or newer): https://dotnet.microsoft.com/download
 #   - macOS: brew install dotnet-sdk
 #
 # Usage:
@@ -19,9 +19,9 @@ cd "$SCRIPT_DIR"
 if ! command -v dotnet &> /dev/null; then
     echo "Error: .NET SDK not found"
     echo ""
-    echo "Please install .NET 8 SDK:"
+    echo "Please install .NET 10 SDK (or newer):"
     echo "  macOS:   brew install dotnet-sdk"
-    echo "  or:      https://dotnet.microsoft.com/download/dotnet/8.0"
+    echo "  or:      https://dotnet.microsoft.com/download"
     exit 1
 fi
 

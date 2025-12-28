@@ -64,7 +64,7 @@ RealOrbitrapAdapter                    MockScanAdapter
 
 | Tool | Version | Required |
 |------|---------|----------|
-| .NET SDK | 8.0+ | Yes |
+| .NET SDK | 10.0+ | Yes |
 | Rust | 1.75+ | Optional (for simulator) |
 | Docker | 24.0+ | Optional |
 | just | 1.0+ | Optional (or use `make`) |
@@ -85,6 +85,22 @@ dotnet test
 # Run sample application
 dotnet run --project samples/Orbitrap.Console
 ```
+
+### VirtualOrbitrap Pipeline (mzML → VirtualRawData)
+
+This repo also includes a Virtual Orbitrap pipeline that reads mzML and produces Orbitrap-like scan objects
+(`VirtualRawData`, `ScanInfo`, `CentroidStream`) with optional enrichment (resolution/noise/baseline/filter strings).
+
+```bash
+# Run the pipeline against the included tiny mzML fixture
+dotnet run -c Release --project samples/VirtualOrbitrap.BasicUsage/VirtualOrbitrap.BasicUsage.csproj -- data/sample.mzML
+
+# Headless streaming replay with ScanArrived events
+dotnet run -c Release --project samples/VirtualOrbitrap.StreamingSimulation/VirtualOrbitrap.StreamingSimulation.csproj -- data/sample.mzML immediate 1.0
+```
+
+Note: the built-in mzML loader is intentionally minimal and currently supports uncompressed base64 arrays.
+If your mzML uses zlib-compressed binary arrays, the loader will need an extension.
 
 ### Minimal Example
 

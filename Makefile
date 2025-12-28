@@ -28,8 +28,10 @@ help:
 	@echo ""
 	@echo "TEST:"
 	@echo "  make test           Run all tests"
+	@echo "  make test-virtualorbitrap  Run VirtualOrbitrap tests"
 	@echo "  make test-coverage  Run tests with code coverage"
 	@echo "  make test-watch     Watch mode (re-run on changes)"
+	@echo "  make test-watch-virtualorbitrap  Watch VirtualOrbitrap tests"
 	@echo ""
 	@echo "RUN:"
 	@echo "  make run            Run sample console app"
@@ -81,6 +83,9 @@ rebuild: clean restore build
 test:
 	dotnet test Orbitrap.sln --configuration Release --logger "console;verbosity=normal"
 
+test-virtualorbitrap:
+	dotnet test tests/VirtualOrbitrap.Tests --configuration Release --logger "console;verbosity=normal"
+
 test-coverage:
 	dotnet test Orbitrap.sln \
 		--configuration Release \
@@ -91,6 +96,9 @@ test-coverage:
 
 test-watch:
 	dotnet watch test --project tests/Orbitrap.Mock.Tests
+
+test-watch-virtualorbitrap:
+	dotnet watch test --project tests/VirtualOrbitrap.Tests
 
 # ============================================================================
 # RUN

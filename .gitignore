@@ -77,3 +77,6 @@ docker-compose.override.yml
 
 # CI/CD
 .claude/
+
+# Documentation (kept out of git)
+docs/
